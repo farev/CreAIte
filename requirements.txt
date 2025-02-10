@@ -1,5 +1,5 @@
 flask
-flask-bootstrap
+bootstrap-flask>=2.2.0
 python-dotenv
 openai
 smolagents

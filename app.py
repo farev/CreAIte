@@ -11,7 +11,11 @@ app = Flask(__name__)
 Bootstrap5(app)
 generator = ToolGenerator()
 
+# Handle Azure's reverse proxy
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+# Configure for production
+app.config['PROPAGATE_EXCEPTIONS'] = True
 
 @app.route('/', methods=['GET'])
 def index():
@@ -49,4 +53,6 @@ def generate_tool():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=False) 
+    # Get port from environment variable or default to 8000
+    port = int(os.environ.get('PORT', 8000))
+    app.run(host='0.0.0.0', port=port) 

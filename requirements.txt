@@ -1,3 +1,6 @@
-openai
+flask
+flask-bootstrap
 python-dotenv
-smolagents 
+openai
+smolagents
+gunicorn 

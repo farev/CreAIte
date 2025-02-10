@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Tool Generator</title>
+    {{ bootstrap.load_css() }}
+    <style>
+        /* Base styles */
+        body {
+            background-color: rgb(249, 250, 251);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 42rem;
+            margin: 3rem auto;
+            padding: 0 1rem;
+        }
+
+        /* Card styles */
+        .card {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+        }
+
+        /* Gradient title */
+        .gradient-title {
+            background: linear-gradient(to right, #2563eb, #9333ea);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-size: 2.25rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            font-size: 1.125rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        /* Form styles */
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control {
+            width: 100%;
+            border-radius: 0.375rem;
+            border: 1px solid #d1d5db;
+            padding: 1rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-control:focus {
+            outline: none;
+            ring: 2px;
+            ring-color: #3b82f6;
+            border-color: #3b82f6;
+        }
+
+        /* Button styles */
+        .submit-button {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 0.375rem;
+            background-color: #2563eb;
+            color: white;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .submit-button:hover {
+            background-color: #1d4ed8;
+        }
+
+        .submit-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: none;
+            width: 24px;
+            height: 24px;
+            margin-right: 0.5rem;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            border-top: 3px solid transparent;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Error message */
+        .error-message {
+            display: none;
+            background-color: #fee2e2;
+            border-left: 4px solid #ef4444;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0.25rem;
+            color: #991b1b;
+        }
+
+        /* Footer */
+        .footer-text {
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1 class="gradient-title">Tool Generator for Smolagents</h1>
+            <p class="subtitle">Generate powerful tools for your AI agents with natural language</p>
+
+            <form id="generateForm" class="needs-validation" novalidate>
+                <div class="mb-4">
+                    <label for="description" class="form-label">What would you like your AI tool to do?</label>
+                    <textarea 
+                        class="form-control" 
+                        id="description" 
+                        name="description" 
+                        rows="6" 
+                        required 
+                        placeholder="Describe your ideal AI tool in detail. For example: 'Create a tool that analyzes customer feedback and generates sentiment reports with key insights...'"
+                    ></textarea>
+                    <div class="invalid-feedback">
+                        Please provide a description.
+                    </div>
+                </div>
+
+                <div id="errorMessage" class="error-message">
+                </div>
+
+                <button type="submit" class="submit-button" id="submitButton">
+                    <div class="spinner"></div>
+                    <span id="buttonText">Generate Tool</span>
+                </button>
+            </form>
+
+            <p class="footer-text">Your generated tool will be downloaded automatically</p>
+        </div>
+    </div>
+
+    {{ bootstrap.load_js() }}
+    <script>
+        document.getElementById('generateForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const form = e.target;
+            const submitButton = document.getElementById('submitButton');
+            const spinner = document.querySelector('.spinner');
+            const buttonText = document.getElementById('buttonText');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            if (!form.checkValidity()) {
+                e.stopPropagation();
+                form.classList.add('was-validated');
+                return;
+            }
+
+            // Update UI for loading state
+            submitButton.disabled = true;
+            spinner.style.display = 'block';
+            buttonText.textContent = 'Generating your tool...';
+            errorMessage.style.display = 'none';
+
+            try {
+                const formData = new FormData(form);
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to generate tool');
+                }
+
+                // Trigger file download
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = response.headers.get('content-disposition').split('filename=')[1];
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+
+            } catch (error) {
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = 'block';
+            } finally {
+                // Reset UI state
+                submitButton.disabled = false;
+                spinner.style.display = 'none';
+                buttonText.textContent = 'Generate Tool';
+            }
+        });
+    </script>
+</body>
+</html>

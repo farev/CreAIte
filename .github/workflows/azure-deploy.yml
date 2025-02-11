@@ -36,8 +36,8 @@ jobs:
       uses: azure/CLI@v1
       with:
         inlineScript: |
-          az webapp config set --resource-group your-resource-group --name CreAITe --linux-fx-version "PYTHON|3.12"
-          az webapp config appsettings set --resource-group your-resource-group --name CreAITe --settings \
+          az webapp config set --resource-group agents --name CreAITe --linux-fx-version "PYTHON|3.12"
+          az webapp config appsettings set --resource-group agents --name CreAITe --settings \
             SCM_DO_BUILD_DURING_DEPLOYMENT=true \
             FLASK_APP=app.py \
             APPINSIGHTS_INSTRUMENTATIONKEY="${{ secrets.APPINSIGHTS_INSTRUMENTATIONKEY }}" 

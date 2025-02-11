@@ -6,9 +6,6 @@ import tempfile
 import zipfile
 import io
 from werkzeug.middleware.proxy_fix import ProxyFix
-from opencensus.ext.azure import metrics_exporter
-from opencensus.ext.azure.log_exporter import AzureLogHandler
-from opencensus.ext.flask.flask_middleware import FlaskMiddleware
 import logging
 
 app = Flask(__name__)
@@ -21,31 +18,48 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 # Configure for production
 app.config['PROPAGATE_EXCEPTIONS'] = True
 
-# Setup Azure Application Insights
-INSTRUMENTATION_KEY = os.getenv('APPINSIGHTS_INSTRUMENTATIONKEY')
-
-# Initialize Flask Middleware for App Insights
-middleware = FlaskMiddleware(
-    app,
-    exporter=metrics_exporter.new_metrics_exporter(
-        enable_standard_metrics=True,
-        connection_string=f'InstrumentationKey={INSTRUMENTATION_KEY}'
-    )
-)
-
 # Setup logging
 logger = logging.getLogger(__name__)
-logger.addHandler(AzureLogHandler(
-    connection_string=f'InstrumentationKey={INSTRUMENTATION_KEY}'
-))
 logger.setLevel(logging.INFO)
+
+# Setup Azure Application Insights if key is available
+INSTRUMENTATION_KEY = os.getenv('APPINSIGHTS_INSTRUMENTATIONKEY')
+if INSTRUMENTATION_KEY:
+    try:
+        from opencensus.ext.azure import metrics_exporter
+        from opencensus.ext.azure.log_exporter import AzureLogHandler
+        from opencensus.ext.flask.flask_middleware import FlaskMiddleware
+
+        # Initialize Flask Middleware for App Insights
+        middleware = FlaskMiddleware(
+            app,
+            exporter=metrics_exporter.new_metrics_exporter(
+                enable_standard_metrics=True,
+                connection_string=f'InstrumentationKey={INSTRUMENTATION_KEY}'
+            )
+        )
+
+        # Add Azure Log Handler
+        logger.addHandler(AzureLogHandler(
+            connection_string=f'InstrumentationKey={INSTRUMENTATION_KEY}'
+        ))
+        
+        logger.info('Application Insights initialized successfully')
+    except Exception as e:
+        logger.warning(f'Failed to initialize Application Insights: {str(e)}')
+        # Add a basic stream handler if App Insights fails
+        logging.basicConfig(level=logging.INFO)
+else:
+    # Add basic logging if no App Insights key
+    logging.basicConfig(level=logging.INFO)
+    logger.warning('No Application Insights key found, using basic logging')
 
 @app.route('/', methods=['GET'])
 def index():
     # Log page visit
     logger.info('Home page visited', extra={'custom_dimensions': {
         'user_agent': request.headers.get('User-Agent')
-    }})
+    }} if INSTRUMENTATION_KEY else {})
     return render_template('index.html')
 
 @app.route('/generate', methods=['POST'])

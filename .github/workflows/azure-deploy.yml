@@ -39,4 +39,5 @@ jobs:
           az webapp config set --resource-group your-resource-group --name CreAITe --linux-fx-version "PYTHON|3.12"
           az webapp config appsettings set --resource-group your-resource-group --name CreAITe --settings \
             SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-            FLASK_APP=app.py 
+            FLASK_APP=app.py \
+            APPINSIGHTS_INSTRUMENTATIONKEY="${{ secrets.APPINSIGHTS_INSTRUMENTATIONKEY }}" 

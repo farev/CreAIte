@@ -3,4 +3,6 @@ bootstrap-flask>=2.2.0
 python-dotenv
 openai
 smolagents
-gunicorn 
+gunicorn
+opencensus-ext-azure
+opencensus-ext-flask 

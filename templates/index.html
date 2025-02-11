@@ -196,6 +196,34 @@
         .download-button:hover {
             background-color: #1d4ed8;
         }
+
+        /* Tab styles */
+        .modal-tabs {
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            color: #6b7280;
+        }
+
+        .tab.active {
+            color: #2563eb;
+            border-bottom: 2px solid #2563eb;
+            font-weight: 500;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -238,24 +266,48 @@
     <div id="previewModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Preview Generated Code</h3>
+                <h3>Preview Generated Files</h3>
                 <span class="modal-close" onclick="closeModal()">&times;</span>
             </div>
-            <pre class="code-preview" id="codePreview"></pre>
+            <div class="modal-tabs">
+                <div class="tab active" onclick="switchTab('python')">Python File</div>
+                <div class="tab" onclick="switchTab('readme')">README</div>
+            </div>
+            <div id="pythonContent" class="tab-content active">
+                <pre class="code-preview" id="pythonPreview"></pre>
+            </div>
+            <div id="readmeContent" class="tab-content">
+                <pre class="code-preview" id="readmePreview"></pre>
+            </div>
             <div class="modal-actions">
-                <button class="download-button" onclick="downloadCode()">Download</button>
+                <button class="download-button" onclick="downloadCode()">Download Files</button>
             </div>
         </div>
     </div>
 
     {{ bootstrap.load_js() }}
     <script>
-        let generatedBlob = null;
+        let generatedZipBlob = null;
         let generatedFilename = null;
+        let generatedPythonContent = null;
+        let generatedReadmeContent = null;
 
-        function showModal(code) {
+        function switchTab(tab) {
+            // Update tab styles
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            // Activate selected tab
+            const selectedTab = document.querySelector(`.tab:nth-child(${tab === 'python' ? '1' : '2'})`);
+            const selectedContent = document.getElementById(`${tab}Content`);
+            selectedTab.classList.add('active');
+            selectedContent.classList.add('active');
+        }
+
+        function showModal(pythonCode, readmeContent) {
             document.getElementById('previewModal').style.display = 'block';
-            document.getElementById('codePreview').textContent = code;
+            document.getElementById('pythonPreview').textContent = pythonCode;
+            document.getElementById('readmePreview').textContent = readmeContent;
         }
 
         function closeModal() {
@@ -263,8 +315,8 @@
         }
 
         function downloadCode() {
-            if (generatedBlob && generatedFilename) {
-                const url = window.URL.createObjectURL(generatedBlob);
+            if (generatedZipBlob) {
+                const url = window.URL.createObjectURL(generatedZipBlob);
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = generatedFilename;
@@ -305,17 +357,26 @@
                 });
 
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Failed to generate tool');
+                    throw new Error('Failed to generate tool');
                 }
 
-                // Store the blob and filename
-                generatedBlob = await response.blob();
+                // Store the original zip blob and filename
+                generatedZipBlob = await response.blob();
                 generatedFilename = response.headers.get('content-disposition').split('filename=')[1];
+                
+                // Extract contents for preview
+                const zip = await JSZip.loadAsync(generatedZipBlob);
+                
+                // Extract Python file
+                const pythonFile = Object.values(zip.files).find(file => file.name.endsWith('.py'));
+                generatedPythonContent = await pythonFile.async('text');
 
-                // Convert blob to text for preview
-                const codeText = await generatedBlob.text();
-                showModal(codeText);
+                // Extract README file
+                const readmeFile = zip.file('README.md');
+                generatedReadmeContent = await readmeFile.async('text');
+
+                // Show the preview modal with both files
+                showModal(generatedPythonContent, generatedReadmeContent);
 
             } catch (error) {
                 errorMessage.textContent = error.message;
@@ -335,5 +396,7 @@
             }
         }
     </script>
+    <!-- Add JSZip library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </body>
 </html>
